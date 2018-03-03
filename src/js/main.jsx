@@ -6,50 +6,47 @@ import isMobile from './utils/isMobile';
 import Device from './utils/device';
 import '../css/main.scss';
 
-
 export default class SwipeToDelete extends React.Component {
-  constructor(props) {
-    super(props);
+  state = {
+    isDeleted: false,
+  }
 
-    this.state = {isDeleted: false};
+  static defaultProps = {
+    tag: 'div',
+    classNameTag: '',
+    background: <Background/>,
+    onDelete: () => {},
+    onCancel: () => {}
+  };
 
+  static propTypes = {
+    children: PropTypes.element.isRequired,
+    background: PropTypes.element,
+    onDelete: PropTypes.func,
+    onCancel: PropTypes.func,
+    tag: PropTypes.string,
+    classNameTag: PropTypes.string,
+    deleteSwipe: (props, propName, componentName) => {
+      let val = props[propName];
+      if (!val) { return; }
+      if (typeof val !== 'number') {
+        return new Error(`Invalid prop "deleteSwipe" in ${componentName}: can be number only.`);
+      }
+      if (val < 0 || val > 1) {
+        return new Error(`Invalid prop "deleteSwipe" in ${componentName}: can be in range [0, 1].`);
+      }
+    }
+  };
+
+  componentDidMount() {
+    // TODO should be in the right place, just putting this here to take it out of the terrible constructor
     this.model = new Model({deleteSwipe: this.props.deleteSwipe});
     this.device = Device.factory(isMobile.any());
 
-    this.bindHandlers();
-  }
-
-  render() {
-    if (this.state.isDeleted) {
-      return null;
-    }
-
-    return React.createElement(
-      this.props.tag,
-      {className: `swipe-to-delete ${this.props.classNameTag}`},
-      [
-        <div key="delete" className="js-delete">{this.props.background}</div>,
-        <div key="content" className="js-content" ref={el => this.regionContent = el}>{this.props.children}</div>
-      ]
-    );
-  }
-
-  componentDidMount() {
     this.addHandlers();
   }
 
-  bindHandlers() {
-    this.addHandlers = this.addHandlers.bind(this);
-    this.interact = this.interact.bind(this);
-    this.moveAt = this.moveAt.bind(this);
-    this.stopInteract = this.stopInteract.bind(this);
-    this.offInteract = this.offInteract.bind(this);
-    this.endInteract = this.endInteract.bind(this);
-    this.onDelete = this.onDelete.bind(this);
-    this.onCancel = this.onCancel.bind(this);
-  }
-
-  addHandlers() {
+  addHandlers = () => {
     this.step = this.startInteract()
       .then(this.interact)
       .then(this.stopInteract)
@@ -57,7 +54,7 @@ export default class SwipeToDelete extends React.Component {
       .catch(this.addHandlers);
   }
 
-  startInteract() {
+  startInteract = () => {
     return new Promise(resolve => {
       this.onInteract = e => {
         el.removeEventListener(this.device.getStartEventName(), this.onInteract, false);
@@ -70,22 +67,22 @@ export default class SwipeToDelete extends React.Component {
     });
   }
 
-  interact() {
+  interact = () => {
     document.addEventListener(this.device.getInteractEventName(), this.moveAt, false);
   }
 
-  offInteract() {
+  offInteract = () => {
     document.removeEventListener(this.device.getInteractEventName(), this.moveAt, false);
   }
 
-  moveAt(e) {
+  moveAt = (e) => {
     const target = this.regionContent.firstChild;
     const res = this.device.getPageX(e) - this.model.startX;
 
     target.style.left = `${res}px`;
   }
 
-  stopInteract() {
+  stopInteract = () => {
     return new Promise((resolve, reject) => {
       const el = this.regionContent.firstChild;
 
@@ -95,7 +92,7 @@ export default class SwipeToDelete extends React.Component {
     });
   }
 
-  onStopInteract(e, resolve, reject) {
+  onStopInteract = (e, resolve, reject) => {
     const el = this.regionContent.firstChild;
 
     this.offInteract();
@@ -105,7 +102,7 @@ export default class SwipeToDelete extends React.Component {
     !shift ? reject() : resolve();
   }
 
-  endInteract() {
+  endInteract = () => {
     const target = this.regionContent.firstChild;
     const swipePercent = this.getSwipePercent();
 
@@ -125,19 +122,19 @@ export default class SwipeToDelete extends React.Component {
     return promise;
   }
 
-  getSwipePercent() {
+  getSwipePercent = () => {
     const shift = this.regionContent.firstChild.offsetLeft;
     const width = this.regionContent.clientWidth;
 
     return this.model.calcSwipePercent({shift, width});
   }
 
-  onDelete() {
+  onDelete = () => {
     this.props.onDelete();
     this.setState({isDeleted: true});
   }
 
-  onCancel(e) {
+  onCancel = (e) => {
     this.props.onCancel();
 
     const target = e.currentTarget;
@@ -145,36 +142,20 @@ export default class SwipeToDelete extends React.Component {
 
     this.model.startX = target.style.left = 0;
   }
+
+  render() {
+    if (this.state.isDeleted) {
+      return null;
+    }
+
+    return React.createElement(
+      this.props.tag,
+      {className: `swipe-to-delete ${this.props.classNameTag}`},
+      [
+        <div key="delete" className="js-delete">{this.props.background}</div>,
+        <div key="content" className="js-content" ref={el => this.regionContent = el}>{this.props.children}</div>
+      ]
+    );
+  }
 }
 
-SwipeToDelete.defaultProps = {
-  tag: 'div',
-  classNameTag: '',
-  background: <Background/>,
-  onDelete: () => {},
-  onCancel: () => {}
-};
-
-SwipeToDelete.propTypes = {
-  children: PropTypes.element.isRequired,
-  background: PropTypes.element,
-  onDelete: PropTypes.func,
-  onCancel: PropTypes.func,
-  tag: PropTypes.string,
-  classNameTag: PropTypes.string,
-  deleteSwipe: (props, propName, componentName) => {
-    let val = props[propName];
-
-    if (!val) {
-      return;
-    }
-
-    if (typeof val !== 'number') {
-      return new Error(`Invalid prop "deleteSwipe" in ${componentName}: can be number only.`);
-    }
-
-    if (val < 0 || val > 1) {
-      return new Error(`Invalid prop "deleteSwipe" in ${componentName}: can be in range [0, 1].`);
-    }
-  }
-};
